@@ -4,7 +4,7 @@
 
 ## 自动接管
 
-`config.json` 的 `include` 为空时，下一轮自动发现新 fork。试运行阶段仅包含 `GestaltX`、`agent-purge`。`exclude` 支持仓库名或 `owner/name`。非 fork、非本人仓库、私有、归档或禁用的仓库不处理。
+`config.json` 的 `include` 已设为空，下一轮自动发现新 fork；不需要逐库配置。`exclude` 支持仓库名或 `owner/name`。非 fork、非本人仓库、私有、归档或禁用的仓库不处理。
 
 同步使用 merge，不强推；冲突时该仓库失败，其他仓库继续。标签同名但对象不同会报错。已消失的上游分支、标签、Release 不自动删除。Release 上传前后核对 SHA-256；附件不变时不下载、不上传；新版本先完成草稿附件再发布。GitHub 上的发布者、发布时间和下载计数属于镜像记录。
 
