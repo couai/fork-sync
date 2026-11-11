@@ -1,0 +1,73 @@
+name: Sync forks
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Check without modifying forks
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-sync
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    if: github.repository == 'couai/fork-sync' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
+      count: ${{ steps.discover.outputs.count }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        id: token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-metadata: read
+      - id: discover
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: python3 scripts/sync.py discover
+
+  sync:
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    name: Sync ${{ matrix.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        id: token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ matrix.repository }}
+          permission-contents: write
+          permission-workflows: write
+          permission-administration: write
+      - name: Sync and verify
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          TARGET_REPOSITORY: ${{ matrix.repository }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
+        run: python3 scripts/sync.py sync

@@ -1,0 +1,33 @@
+name: Monthly status
+on:
+  schedule:
+    - cron: '41 3 1 * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  record:
+    if: github.repository == 'couai/fork-sync' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Record monthly scheduler status
+        run: |
+          mkdir -p status
+          python3 - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import json
+          config = json.loads(Path('config.json').read_text())
+          status = {'month': datetime.now(timezone.utc).strftime('%Y-%m'),
+                    'owner': config['owner'], 'automatic_discovery': not config['include']}
+          Path('status/scheduler.json').write_text(json.dumps(status, indent=2) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add status/scheduler.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: record monthly scheduler status [skip ci]'
+            git push origin HEAD:main
+          fi
