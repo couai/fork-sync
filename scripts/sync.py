@@ -50,11 +50,13 @@ def sync_branch(client, repository, dry_run=False):
         return {**report, "status": "up_to_date"}
     if dry_run:
         return {**report, "status": "would_merge"}
-    client(f"repos/{target}/merges", "POST", {
+    merged = client(f"repos/{target}/merges", "POST", {
         "base": branch, "head": source_sha,
         "commit_message": f"chore: sync upstream {source}:{source_branch} [skip ci]",
     })
-    after = client(target_path)["object"]["sha"]
+    # GitHub can briefly serve the previous branch ref after a successful merge.
+    # Verify the returned immutable commit; 204 means another sync already merged it.
+    after = merged["sha"] if merged else client(target_path)["object"]["sha"]
     if client(f"repos/{target}/compare/{source_sha}...{after}")["behind_by"]:
         raise RuntimeError("Merged branch does not contain the upstream commit")
     return {**report, "status": "synced", "result_sha": after}

@@ -73,6 +73,20 @@ class DiscoveryTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
+    def test_merge_verification_uses_returned_commit_when_branch_read_is_stale(self):
+        class StaleRefApi(ForkApi):
+            def __call__(self, path, method="GET", data=None):
+                result = super().__call__(path, method, data)
+                if path == "repos/couai/sample/git/ref/heads/master":
+                    return {"object": {"sha": "fork-with-own-commit"}}
+                if "/compare/" in path:
+                    return {"behind_by": 2 if path.endswith("...fork-with-own-commit") else 0}
+                return result
+
+        client = StaleRefApi()
+        result = sync.sync_branch(client, client.repo)
+        self.assertEqual(result["result_sha"], "merge-preserving-own-commit")
+
     def test_merge_preserves_history_and_annotated_tags(self):
         client = ForkApi()
         result = sync.sync_repository(client, CONFIG, "sample", release_sync=lambda *args: {"verified": True})
