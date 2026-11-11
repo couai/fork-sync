@@ -32,3 +32,5 @@ python3 -m unittest discover -s tests -v
 ```
 
 实际验证应包括：首次补齐、无变化复跑、默认分支和标签一致性、Release 元数据与全部附件 SHA-256 一致。设计见 [docs/design/fork-sync.md](docs/design/fork-sync.md)。
+
+2026-11-11 首次部署核验通过：12 个公开 fork、164 个标签、52 个 Releases、160 个附件；全部附件 SHA-256 一致。[全量同步记录](https://github.com/couai/fork-sync/actions/runs/42987248501)。
